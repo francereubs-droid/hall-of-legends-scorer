@@ -1,0 +1,10 @@
+{
+  "name": "seven-wonders-hall-of-legends",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Score tracker for 7 Wonders: Hall of Legends",
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0",
+    "@netlify/functions": "^2.8.2"
+  }
+}
