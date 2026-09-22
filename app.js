@@ -75,6 +75,35 @@
     toastTimer = setTimeout(function () { t.classList.remove("is-visible"); }, 2200);
   }
 
+  function shareAppLink() {
+    var url = window.location.href;
+    if (navigator.share) {
+      navigator.share({ title: document.title, url: url }).catch(function () {});
+      return;
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(function () {
+        toast("Link copied — share it on WhatsApp!");
+      }, function () {
+        toast("Could not copy link");
+      });
+      return;
+    }
+    var input = el("textarea");
+    input.value = url;
+    input.style.position = "fixed";
+    input.style.opacity = "0";
+    document.body.appendChild(input);
+    input.select();
+    try {
+      document.execCommand("copy");
+      toast("Link copied — share it on WhatsApp!");
+    } catch (err) {
+      toast("Could not copy link");
+    }
+    document.body.removeChild(input);
+  }
+
   function emptySheetEntry(index) {
     return {
       playerId: null,
@@ -582,6 +611,7 @@
     });
     $("#btn-save-game").addEventListener("click", saveGame);
     $("#btn-home-icon").addEventListener("click", function () { show("sheet"); });
+    $("#btn-share").addEventListener("click", shareAppLink);
 
     $("#btn-history").addEventListener("click", function () { show("history"); });
     $("#btn-trends-shortcut").addEventListener("click", function () { show("trends"); });
