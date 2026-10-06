@@ -26,7 +26,11 @@
     players: [],
     games: [],
     playerCount: 4,
-    sheet: [] // { playerId, playerName, wonder, scores: {key: n} }
+    sheet: [], // { playerId, playerName, wonder, scores: {key: n} }
+    selectedGameId: null,
+    selectedPlayerName: null,
+    playerDetailOrigin: "players",
+    pendingDeleteGameId: null
   };
 
   // ---------------- API ----------------
@@ -101,6 +105,30 @@
     return t;
   }
 
+  // ---------------- Share ----------------
+
+  function shareApp() {
+    var url = window.location.origin + window.location.pathname;
+    var shareData = {
+      title: "7 Wonders: Hall of Legends — Score Tracker",
+      text: "Score our 7 Wonders games together — everyone sees the same players, rankings, and trends.",
+      url: url
+    };
+    if (navigator.share) {
+      navigator.share(shareData).catch(function () { /* user cancelled — no-op */ });
+      return;
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(function () {
+        toast("Link copied — send it to your group!");
+      }).catch(function () {
+        toast(url);
+      });
+      return;
+    }
+    toast(url);
+  }
+
   // ---------------- Navigation ----------------
 
   function show(viewName) {
@@ -111,7 +139,20 @@
     if (viewName === "rankings") renderRankings();
     if (viewName === "trends") renderTrends();
     if (viewName === "history") renderHistory();
+    if (viewName === "game-detail") renderGameDetail(state.selectedGameId);
+    if (viewName === "player-detail") renderPlayerDetail(state.selectedPlayerName);
     window.scrollTo(0, 0);
+  }
+
+  function openGameDetail(gameId) {
+    state.selectedGameId = gameId;
+    show("game-detail");
+  }
+
+  function openPlayerDetail(name, originView) {
+    state.selectedPlayerName = name;
+    state.playerDetailOrigin = originView || "players";
+    show("player-detail");
   }
 
   // ---------------- Player count pills ----------------
@@ -193,7 +234,7 @@
         td.innerHTML =
           '<span class="stepper" data-idx="' + i + '" data-key="' + cat.key + '">' +
             '<button type="button" class="minus" data-delta="-1">−</button>' +
-            '<span class="val">' + val + "</span>" +
+            '<input type="text" inputmode="numeric" pattern="[0-9]*" class="val-input" value="' + val + '">' +
             '<button type="button" class="plus" data-delta="1" style="background:' + cat.color + '">+</button>' +
           "</span>";
         tr.appendChild(td);
@@ -235,8 +276,41 @@
       var next = (Number(entry.scores[key]) || 0) + delta;
       if (next < 0) next = 0;
       entry.scores[key] = next;
-      stepper.querySelector(".val").textContent = next;
+      stepper.querySelector(".val-input").value = next;
       renderTotalsRow();
+    }
+  }
+
+  function onSheetTableFocusIn(e) {
+    var input = e.target.closest(".val-input");
+    if (!input) return;
+    input.dataset.prevValue = input.value;
+    setTimeout(function () { input.select(); }, 0);
+  }
+
+  function onSheetTableFocusOut(e) {
+    var input = e.target.closest(".val-input");
+    if (!input) return;
+    var stepper = input.closest(".stepper");
+    var idx = Number(stepper.getAttribute("data-idx"));
+    var key = stepper.getAttribute("data-key");
+    var prev = Number(input.dataset.prevValue) || 0;
+    var raw = input.value.trim();
+    var next;
+    if (raw === "") {
+      next = prev;
+    } else {
+      var parsed = parseInt(raw, 10);
+      next = Number.isFinite(parsed) ? Math.max(0, parsed) : prev;
+    }
+    state.sheet[idx].scores[key] = next;
+    input.value = next;
+    renderTotalsRow();
+  }
+
+  function onSheetTableKeydown(e) {
+    if (e.key === "Enter" && e.target.classList.contains("val-input")) {
+      e.target.blur();
     }
   }
 
@@ -286,14 +360,79 @@
       body: JSON.stringify({ entries: entries })
     }).then(function (game) {
       state.games.push(game);
-      toast("Game saved — " + game.winnerName + " wins!");
-      resetSheet();
+      showWinCelebration(game);
     }).catch(function (err) {
       toast(err.message || "Could not save game");
     }).finally(function () {
       btn.disabled = false;
       btn.textContent = "Save Game";
     });
+  }
+
+  // ---------------- Win celebration ----------------
+
+  var winDismissTimer = null;
+
+  function showWinCelebration(game) {
+    var winnerEntry = game.entries.filter(function (e) { return e.playerName === game.winnerName; })[0];
+    var score = winnerEntry ? winnerEntry.total : 0;
+
+    $("#win-name").textContent = game.winnerName;
+    $("#win-score").textContent = score + (score === 1 ? " point" : " points");
+
+    buildConfetti();
+
+    var overlay = $("#win-overlay");
+    overlay.classList.remove("is-hidden");
+
+    clearTimeout(winDismissTimer);
+    winDismissTimer = setTimeout(dismissWinCelebration, 3200);
+  }
+
+  function buildConfetti() {
+    var wrap = $("#confetti-wrap");
+    wrap.innerHTML = "";
+    var colors = CATEGORIES.map(function (c) { return c.color; }).concat(["#e0b25c", "#f0cf8e"]);
+    for (var i = 0; i < 32; i++) {
+      var piece = el("span", "confetti-piece");
+      var color = colors[i % colors.length];
+      var left = Math.random() * 100;
+      var duration = 1.6 + Math.random() * 1.2;
+      var delay = Math.random() * 0.5;
+      var size = 6 + Math.random() * 6;
+      piece.style.left = left + "%";
+      piece.style.background = color;
+      piece.style.width = size + "px";
+      piece.style.height = (size * 1.6) + "px";
+      piece.style.borderRadius = Math.random() > 0.5 ? "50%" : "2px";
+      piece.style.animationDuration = duration + "s";
+      piece.style.animationDelay = delay + "s";
+      wrap.appendChild(piece);
+    }
+  }
+
+  function dismissWinCelebration() {
+    clearTimeout(winDismissTimer);
+    var overlay = $("#win-overlay");
+    if (overlay.classList.contains("is-hidden")) return;
+    overlay.classList.add("is-hidden");
+    resetSheet();
+  }
+
+  // ---------------- Confirm modal ----------------
+
+  var confirmModalAction = null;
+
+  function openConfirmModal(title, text, onConfirm) {
+    $("#confirm-modal-title").textContent = title;
+    $("#confirm-modal-text").textContent = text;
+    confirmModalAction = onConfirm;
+    $("#confirm-modal").classList.remove("is-hidden");
+  }
+
+  function closeConfirmModal() {
+    $("#confirm-modal").classList.add("is-hidden");
+    confirmModalAction = null;
   }
 
   // ---------------- Player profiles ----------------
@@ -317,8 +456,12 @@
         '<button class="player-card__delete" type="button" aria-label="Remove ' + escapeHtml(p.name) + '">' +
           '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>' +
         "</button>";
-      card.querySelector(".player-card__delete").addEventListener("click", function () {
+      card.querySelector(".player-card__delete").addEventListener("click", function (e) {
+        e.stopPropagation();
         deletePlayer(p.id);
+      });
+      card.addEventListener("click", function () {
+        openPlayerDetail(p.name, "players");
       });
       grid.appendChild(card);
     });
@@ -401,8 +544,127 @@
           '<div class="rank-wins">' + r.wins + " win" + (r.wins === 1 ? "" : "s") + "</div>" +
           '<div class="rank-best">best ' + r.best + "</div>" +
         "</span>";
+      card.addEventListener("click", function () {
+        openPlayerDetail(r.name, "rankings");
+      });
       list.appendChild(card);
     });
+  }
+
+  // ---------------- Player detail ----------------
+
+  function entriesForPlayer(name) {
+    var list = [];
+    state.games.forEach(function (g) {
+      var e = g.entries.filter(function (x) { return x.playerName === name; })[0];
+      if (e) list.push({ game: g, entry: e });
+    });
+    return list;
+  }
+
+  function factRow(icon, label, value) {
+    return '<div class="fact-row"><span class="fact-row__icon">' + icon + '</span>' +
+      '<span class="fact-row__body"><p class="fact-row__label">' + label + '</p>' +
+      '<p class="fact-row__value">' + value + "</p></span></div>";
+  }
+
+  function renderPlayerDetail(name) {
+    var content = $("#player-detail-content");
+    var empty = $("#player-detail-empty");
+    $("#player-detail-title").textContent = name || "Player";
+
+    var rows = entriesForPlayer(name);
+    if (!rows.length) {
+      empty.classList.remove("is-hidden");
+      content.innerHTML = "";
+      $("#player-detail-subtitle").textContent = "No games yet";
+      return;
+    }
+    empty.classList.add("is-hidden");
+
+    var gamesPlayed = rows.length;
+    var wins = rows.filter(function (r) { return r.game.winnerName === name; }).length;
+    var winRate = Math.round((wins / gamesPlayed) * 100);
+    var totals = rows.map(function (r) { return r.entry.total; });
+    var bestScore = Math.max.apply(null, totals);
+    var avgScore = totals.reduce(function (a, b) { return a + b; }, 0) / gamesPlayed;
+
+    $("#player-detail-subtitle").textContent =
+      gamesPlayed + " game" + (gamesPlayed === 1 ? "" : "s") + " played · " + winRate + "% win rate";
+
+    var catAverages = CATEGORIES.map(function (c) {
+      var sum = rows.reduce(function (s, r) { return s + (Number(r.entry.scores[c.key]) || 0); }, 0);
+      return { cat: c, avg: sum / gamesPlayed };
+    });
+    var maxCatAvg = Math.max.apply(null, catAverages.map(function (c) { return c.avg; })) || 1;
+
+    var wonderStats = {};
+    rows.forEach(function (r) {
+      var w = r.entry.wonder || "—";
+      if (!wonderStats[w]) wonderStats[w] = { wonder: w, plays: 0, wins: 0 };
+      wonderStats[w].plays += 1;
+      if (r.game.winnerName === name) wonderStats[w].wins += 1;
+    });
+    var wonderList = Object.keys(wonderStats).map(function (k) { return wonderStats[k]; });
+    var favoriteWonder = wonderList.slice().sort(function (a, b) { return b.plays - a.plays; })[0];
+    var bestWonder = wonderList.slice().sort(function (a, b) {
+      if (b.wins !== a.wins) return b.wins - a.wins;
+      return b.plays - a.plays;
+    })[0];
+
+    var longestStreak = 0, currentRun = 0;
+    rows.forEach(function (r) {
+      if (r.game.winnerName === name) {
+        currentRun += 1;
+        if (currentRun > longestStreak) longestStreak = currentRun;
+      } else {
+        currentRun = 0;
+      }
+    });
+    var activeStreak = 0;
+    for (var i = rows.length - 1; i >= 0; i--) {
+      if (rows[i].game.winnerName === name) activeStreak += 1;
+      else break;
+    }
+
+    var bestRow = rows.slice().sort(function (a, b) { return b.entry.total - a.entry.total; })[0];
+    var bestDate = new Date(bestRow.game.ts);
+    var bestDateStr = isNaN(bestDate.getTime()) ? "" : bestDate.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+
+    content.innerHTML = "";
+
+    var tiles = el("div", "stat-tiles");
+    tiles.appendChild(statTile("Games Played", String(gamesPlayed), ""));
+    tiles.appendChild(statTile("Wins", String(wins), winRate + "% win rate"));
+    tiles.appendChild(statTile("Best Score", String(bestScore), ""));
+    tiles.appendChild(statTile("Avg. Score", avgScore.toFixed(1), "per game"));
+    content.appendChild(tiles);
+
+    var catCard = el("div", "chart-card");
+    var catBars = catAverages.map(function (c) {
+      return '<div class="hbar-row">' +
+        '<span class="hbar-label">' + c.cat.label + "</span>" +
+        '<span class="hbar-track"><span class="hbar-fill" style="width:' + Math.max(4, (c.avg / maxCatAvg) * 100) + "%;background:" + c.cat.color + '"></span></span>' +
+        '<span class="hbar-value">' + c.avg.toFixed(1) + "</span>" +
+      "</div>";
+    }).join("");
+    catCard.innerHTML = '<p class="chart-card__title">Average Score by Category</p>' + catBars;
+    content.appendChild(catCard);
+
+    var sparkCard = el("div", "chart-card");
+    sparkCard.innerHTML = '<p class="chart-card__title">Score Trend</p><div class="sparkline-wrap"></div>';
+    sparkCard.querySelector(".sparkline-wrap").appendChild(buildSparkline(totals));
+    content.appendChild(sparkCard);
+
+    var factCard = el("div", "chart-card");
+    var facts = [];
+    facts.push(factRow("🏛️", "Favorite Wonder", favoriteWonder ? escapeHtml(favoriteWonder.wonder) + " · " + favoriteWonder.plays + " play" + (favoriteWonder.plays === 1 ? "" : "s") : "—"));
+    facts.push(factRow("👑", "Best Wonder", bestWonder && bestWonder.wins > 0 ? escapeHtml(bestWonder.wonder) + " · " + bestWonder.wins + " win" + (bestWonder.wins === 1 ? "" : "s") : "No wins yet"));
+    var streakValue = activeStreak >= 2 ? activeStreak : longestStreak;
+    facts.push(factRow("🔥", activeStreak >= 2 ? "Current Win Streak" : "Longest Win Streak", streakValue + " game" + (streakValue === 1 ? "" : "s") + " in a row"));
+    facts.push(factRow("⭐", "Best Game Ever", bestRow.entry.total + " points with " + escapeHtml(bestRow.entry.wonder || "—") + (bestDateStr ? " · " + bestDateStr : "")));
+    factCard.innerHTML = '<p class="chart-card__title">Fun Facts</p><div class="fact-list">' + facts.join("") + "</div>";
+    content.appendChild(factCard);
   }
 
   // ---------------- Trends ----------------
@@ -556,12 +818,96 @@
         return '<span class="history-score"><strong>' + escapeHtml(e.playerName) + "</strong> " + e.total + "</span>";
       }).join("");
       card.innerHTML =
-        '<div class="history-card__top">' +
-          '<span class="history-card__date">' + dateStr + " · " + g.playerCount + " players</span>" +
-          '<span class="history-card__winner">🏆 ' + escapeHtml(g.winnerName) + "</span>" +
+        '<div class="history-card__body">' +
+          '<div class="history-card__top">' +
+            '<span class="history-card__date">' + dateStr + " · " + g.playerCount + " players</span>" +
+            '<span class="history-card__winner">🏆 ' + escapeHtml(g.winnerName) + "</span>" +
+          "</div>" +
+          '<div class="history-card__scores">' + scoresHtml + "</div>" +
         "</div>" +
-        '<div class="history-card__scores">' + scoresHtml + "</div>";
+        '<span class="history-card__chevron"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>' +
+        '<button class="history-card__delete" type="button" aria-label="Delete this game">' +
+          '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>' +
+        "</button>";
+      card.querySelector(".history-card__body").addEventListener("click", function () {
+        openGameDetail(g.id);
+      });
+      card.querySelector(".history-card__chevron").addEventListener("click", function () {
+        openGameDetail(g.id);
+      });
+      card.querySelector(".history-card__delete").addEventListener("click", function (e) {
+        e.stopPropagation();
+        openConfirmModal(
+          "Delete this game?",
+          "This can't be undone. Rankings, trends and player stats will update once it's removed.",
+          function () { deleteGame(g.id, "history"); }
+        );
+      });
       list.appendChild(card);
+    });
+  }
+
+  // ---------------- Game detail ----------------
+
+  function renderGameDetail(gameId) {
+    var game = state.games.filter(function (g) { return g.id === gameId; })[0];
+    if (!game) {
+      show("history");
+      return;
+    }
+
+    var date = new Date(game.ts);
+    var dateStr = isNaN(date.getTime()) ? "Game detail" : date.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
+    $("#game-detail-title").textContent = dateStr;
+    $("#game-detail-subtitle").textContent = game.playerCount + " players · 🏆 " + game.winnerName;
+
+    var headRow = $("#game-detail-head-row");
+    headRow.innerHTML = '<th class="cat-col">Categories</th>';
+    game.entries.forEach(function (e) {
+      var th = el("th", "player-col-head" + (e.playerName === game.winnerName ? " is-winner" : ""));
+      th.innerHTML =
+        '<span class="detail-player-name">' + escapeHtml(e.playerName) + "</span>" +
+        '<span class="detail-player-wonder">' + escapeHtml(e.wonder || "—") + "</span>";
+      headRow.appendChild(th);
+    });
+
+    var body = $("#game-detail-body");
+    body.innerHTML = "";
+    CATEGORIES.forEach(function (cat) {
+      var tr = el("tr", "cat-row");
+      var labelTd = el("td", "cat-col");
+      labelTd.innerHTML = '<span class="cat-label-cell"><span class="cat-dot" style="background:' + cat.color + '"></span>' + cat.label + "</span>";
+      tr.appendChild(labelTd);
+      game.entries.forEach(function (e) {
+        var td = el("td");
+        td.innerHTML = '<span class="detail-value">' + (Number(e.scores[cat.key]) || 0) + "</span>";
+        tr.appendChild(td);
+      });
+      body.appendChild(tr);
+    });
+
+    var totalRow = $("#game-detail-total-row");
+    totalRow.innerHTML = '<td class="cat-col">Total</td>';
+    game.entries.forEach(function (e) {
+      var td = el("td");
+      td.innerHTML = '<span class="total-value">' + e.total + "</span>";
+      totalRow.appendChild(td);
+    });
+  }
+
+  function deleteGame(id, origin) {
+    api("/api/games?id=" + encodeURIComponent(id), { method: "DELETE" }).then(function () {
+      state.games = state.games.filter(function (g) { return g.id !== id; });
+      closeConfirmModal();
+      toast("Game deleted");
+      if (origin === "game-detail") {
+        show("history");
+      } else {
+        renderHistory();
+      }
+    }).catch(function (err) {
+      closeConfirmModal();
+      toast(err.message || "Could not delete game");
     });
   }
 
@@ -576,6 +922,9 @@
 
     $("#sheet-table").addEventListener("click", onSheetTableClick);
     $("#sheet-table").addEventListener("change", onSheetTableChange);
+    $("#sheet-table").addEventListener("focusin", onSheetTableFocusIn);
+    $("#sheet-table").addEventListener("focusout", onSheetTableFocusOut);
+    $("#sheet-table").addEventListener("keydown", onSheetTableKeydown);
     $("#btn-reset").addEventListener("click", function () {
       resetSheet();
       toast("Sheet reset");
@@ -589,12 +938,30 @@
     $("#btn-rankings-shortcut").addEventListener("click", function () { show("rankings"); });
 
     $all("[data-back]").forEach(function (b) { b.addEventListener("click", function () { show("sheet"); }); });
+    $all(".btn-share").forEach(function (b) { b.addEventListener("click", shareApp); });
     $all("[data-goto]").forEach(function (b) { b.addEventListener("click", function () { show(b.getAttribute("data-goto")); }); });
 
     $("#btn-add-player").addEventListener("click", addPlayer);
     $("#new-player-name").addEventListener("keydown", function (e) {
       if (e.key === "Enter") addPlayer();
     });
+
+    $("#btn-back-game-detail").addEventListener("click", function () { show("history"); });
+    $("#btn-delete-game-detail").addEventListener("click", function () {
+      openConfirmModal(
+        "Delete this game?",
+        "This can't be undone. Rankings, trends and player stats will update once it's removed.",
+        function () { deleteGame(state.selectedGameId, "game-detail"); }
+      );
+    });
+    $("#btn-back-player-detail").addEventListener("click", function () { show(state.playerDetailOrigin); });
+
+    $("#confirm-modal-cancel").addEventListener("click", closeConfirmModal);
+    $("#confirm-modal-confirm").addEventListener("click", function () {
+      if (confirmModalAction) confirmModalAction();
+    });
+
+    $("#win-overlay").addEventListener("click", dismissWinCelebration);
   }
 
   document.addEventListener("DOMContentLoaded", init);

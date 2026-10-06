@@ -26,6 +26,9 @@
       <button class="icon-btn" id="btn-reset" aria-label="Reset scoring sheet" type="button">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
       </button>
+      <button class="icon-btn btn-share" aria-label="Share this app" type="button">
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="10.5" x2="15.4" y2="6.5"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/></svg>
+      </button>
     </header>
 
     <div class="playercount-row">
@@ -83,6 +86,9 @@
         <h1 class="topbar__title">Player Profiles</h1>
         <p class="topbar__subtitle">Your regulars — pick them from the scoring sheet dropdowns</p>
       </div>
+      <button class="icon-btn btn-share" aria-label="Share this app" type="button">
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="10.5" x2="15.4" y2="6.5"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/></svg>
+      </button>
     </header>
 
     <div class="add-player-row">
@@ -104,6 +110,9 @@
         <h1 class="topbar__title">Global Rankings</h1>
         <p class="topbar__subtitle">All-time greats — ranked by wins, then best score</p>
       </div>
+      <button class="icon-btn btn-share" aria-label="Share this app" type="button">
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="10.5" x2="15.4" y2="6.5"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/></svg>
+      </button>
     </header>
 
     <div class="empty-state is-hidden" id="rankings-empty">
@@ -125,6 +134,9 @@
         <h1 class="topbar__title">Trends of the Champions</h1>
         <p class="topbar__subtitle">Patterns across every recorded game</p>
       </div>
+      <button class="icon-btn btn-share" aria-label="Share this app" type="button">
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="10.5" x2="15.4" y2="6.5"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/></svg>
+      </button>
     </header>
 
     <div class="empty-state is-hidden" id="trends-empty">
@@ -146,6 +158,9 @@
         <h1 class="topbar__title">Game History</h1>
         <p class="topbar__subtitle">Every game you've recorded, most recent first</p>
       </div>
+      <button class="icon-btn btn-share" aria-label="Share this app" type="button">
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="10.5" x2="15.4" y2="6.5"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/></svg>
+      </button>
     </header>
 
     <div class="empty-state is-hidden" id="history-empty">
@@ -157,7 +172,82 @@
     <div class="history-list" id="history-list"></div>
   </section>
 
+  <!-- GAME DETAIL -->
+  <section class="view is-hidden" id="view-game-detail" data-view="game-detail">
+    <header class="topbar">
+      <button class="icon-badge" id="btn-back-game-detail" aria-label="Back to history" type="button">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      </button>
+      <div class="topbar__titles">
+        <h1 class="topbar__title" id="game-detail-title">Game Detail</h1>
+        <p class="topbar__subtitle" id="game-detail-subtitle">Final scoring breakdown</p>
+      </div>
+      <button class="icon-btn" id="btn-delete-game-detail" aria-label="Delete this game" type="button">
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+      </button>
+    </header>
+
+    <div class="sheet-scroll">
+      <table class="sheet-table detail-table" id="game-detail-table">
+        <thead>
+          <tr id="game-detail-head-row"><th class="cat-col">Categories</th></tr>
+        </thead>
+        <tbody id="game-detail-body"></tbody>
+        <tfoot>
+          <tr id="game-detail-total-row"></tr>
+        </tfoot>
+      </table>
+    </div>
+  </section>
+
+  <!-- PLAYER DETAIL -->
+  <section class="view is-hidden" id="view-player-detail" data-view="player-detail">
+    <header class="topbar">
+      <button class="icon-badge" id="btn-back-player-detail" aria-label="Back" type="button">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      </button>
+      <div class="topbar__titles">
+        <h1 class="topbar__title" id="player-detail-title">Player</h1>
+        <p class="topbar__subtitle" id="player-detail-subtitle">Stats and trends</p>
+      </div>
+      <button class="icon-btn btn-share" aria-label="Share this app" type="button">
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="10.5" x2="15.4" y2="6.5"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/></svg>
+      </button>
+    </header>
+
+    <div class="empty-state is-hidden" id="player-detail-empty">
+      <div class="empty-state__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+      <p class="empty-state__text">No games recorded for this player yet.</p>
+    </div>
+
+    <div class="trends-content" id="player-detail-content"></div>
+  </section>
+
   <div class="toast" id="toast"></div>
+
+  <!-- CONFIRM MODAL -->
+  <div class="modal-overlay is-hidden" id="confirm-modal">
+    <div class="modal-card">
+      <p class="modal-card__title" id="confirm-modal-title">Delete this game?</p>
+      <p class="modal-card__text" id="confirm-modal-text">This can't be undone. All stats, rankings and trends tied to this game will be removed too.</p>
+      <div class="modal-card__actions">
+        <button class="btn btn--ghost" id="confirm-modal-cancel" type="button">Cancel</button>
+        <button class="btn btn--danger" id="confirm-modal-confirm" type="button">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- WIN CELEBRATION -->
+  <div class="win-overlay is-hidden" id="win-overlay">
+    <div class="confetti-wrap" id="confetti-wrap"></div>
+    <div class="win-card">
+      <div class="win-trophy">🏆</div>
+      <p class="win-card__eyebrow">Victory!</p>
+      <p class="win-card__name" id="win-name">—</p>
+      <p class="win-card__score" id="win-score">0 points</p>
+      <p class="win-card__hint">Tap anywhere to continue</p>
+    </div>
+  </div>
 </div>
 
 <script src="app.js"></script>
